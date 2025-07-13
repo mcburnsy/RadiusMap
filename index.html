@@ -19,7 +19,7 @@
             margin-bottom: 20px;
         }
         #map {
-            height: 750px;
+            height: 500px;
             width: 100%;
             max-width: 800px;
             margin-top: 20px;
@@ -101,7 +101,7 @@
                 const longitude = parseFloat(lon);
 
                 // Update map view
-                map.setView([latitude, longitude], 9);
+                map.setView([latitude, longitude], 8);
 
                 // Remove existing circle if it exists
                 if (circle) {
