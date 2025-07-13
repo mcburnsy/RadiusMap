@@ -160,6 +160,9 @@
                     radius: 60 * 1609.34 // 60 miles in meters
                 }).addTo(map);
 
+                // Set map bounds to the circle with 50px padding
+                map.fitBounds(circle.getBounds(), { padding: [50, 50] });
+                
                 // Add marker for zip
                 L.marker([zipLatitude, zipLongitude]).addTo(map);
 
@@ -219,12 +222,6 @@
                     const distance = haversineDistance(zipLatitude, zipLongitude, zipcanLatitude, zipcanLongitude);
                     distanceLabel.textContent = `Distance: ${distance.toFixed(2)} miles`;
 
-                    // Adjust map to fit both markers
-                    const bounds = L.latLngBounds([
-                        [zipLatitude, zipLongitude],
-                        [zipcanLatitude, zipcanLongitude]
-                    ]);
-                    map.fitBounds(bounds, { padding: [50, 50] });
                 }
 
             } catch (error) {
