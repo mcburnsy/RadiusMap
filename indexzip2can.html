@@ -24,7 +24,7 @@
             max-width: 800px;
             margin-top: 20px;
         }
-        #zipLabel, #reqLabel {
+        #zipLabel, #reqLabel, #zipcanLabel, #distanceLabel {
             font-size: 18px;
             font-weight: bold;
             margin: 10px 0;
@@ -41,6 +41,8 @@
     <h1>Zip Code Map with 60-Mile Radius</h1>
     <div id="zipLabel"></div>
     <div id="reqLabel"></div>
+    <div id="zipcanLabel"></div>
+    <div id="distanceLabel"></div>
     <div id="error"></div>
     <div id="map"></div>
 
@@ -48,6 +50,7 @@
     <script>
         let map;
         let circle;
+        let polyline;
 
         // Initialize the map
         function initMap(lat = 39.8283, lng = -98.5795) {
@@ -57,25 +60,35 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         }
 
+        // Haversine formula to calculate distance between two points in miles
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 3958.8; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
         // Function to get query string parameters
         function getQueryParams() {
             const params = new URLSearchParams(window.location.search);
             return {
                 zip: params.get('zip'),
-                req: params.get('req')
+                req: params.get('req'),
+                zipcan: params.get('zipcan')
             };
         }
 
-        // Function to add a delay (returns a Promise)
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        // Function to update map based on zip code
+        // Function to update map based on zip codes
         async function updateMap() {
-            const { zip, req } = getQueryParams();
+            const { zip, req, zipcan } = getQueryParams();
             const zipLabel = document.getElementById('zipLabel');
             const reqLabel = document.getElementById('reqLabel');
+            const zipcanLabel = document.getElementById('zipcanLabel');
+            const distanceLabel = document.getElementById('distanceLabel');
             const errorDiv = document.getElementById('error');
 
             // Display req parameter if present
@@ -88,46 +101,96 @@
                 return;
             }
 
+            // Validate candidate zip code if provided
+            if (zipcan && !/^\d{5}$/.test(zipcan)) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = 'Please provide a valid 5-digit candidate zip code in the URL (e.g., ?zipcan=10001).';
+                return;
+            }
+
             errorDiv.style.display = 'none';
             zipLabel.textContent = `Zip Code: ${zip}`;
+            zipcanLabel.textContent = zipcan ? `Candidate Zip Code: ${zipcan}` : '';
+
+(distanceLabel.textContent = '';
 
             try {
-                // Add 3-second delay before API call
-                await delay(3000);
+                // Fetch coordinates for zip
+                const zipResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${zip}&countrycodes=US`);
+                const zipData = await zipResponse.json();
 
-                // Use Nominatim for geocoding (OpenStreetMap)
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${zip}&countrycodes=US`);
-                const data = await response.json();
-
-                if (data.length === 0) {
+                if (zipData.length === 0) {
                     errorDiv.style.display = 'block';
                     errorDiv.textContent = 'Zip code not found. Please try another.';
                     return;
                 }
 
-                const { lat, lon } = data[0];
-                const latitude = parseFloat(lat);
-                const longitude = parseFloat(lon);
+                const { lat: zipLat, lon: zipLon } = zipData[0];
+                const zipLatitude = parseFloat(zipLat);
+                const zipLongitude = parseFloat(zipLon);
 
-                // Update map view
-                map.setView([latitude, longitude], 8);
+                // Update map view to center on zip
+                map.setView([zipLatitude, zipLongitude], 8);
 
-                // Remove existing circle if it exists
+                // Remove existing circle and polyline if they exist
                 if (circle) {
                     map.removeLayer(circle);
                 }
+                if (polyline) {
+                    map.removeLayer(polyline);
+                }
 
                 // Add 60-mile radius circle (1 mile ≈ 1609.34 meters)
-                circle = L.circle([latitude, longitude], {
+                circle = L.circle([zipLatitude, zipLongitude], {
                     color: 'blue',
                     fillColor: '#30f',
                     fillOpacity: 0.2,
                     radius: 60 * 1609.34 // 60 miles in meters
                 }).addTo(map);
 
-                // Add marker at the center
-                L.marker([latitude, longitude]).addTo(map)
+                // Add marker for zip with popup opened by default
+                L.marker([zipLatitude, zipLongitude]).addTo(map)
                     .bindPopup(`Zip: ${zip}`).openPopup();
+
+                // Handle candidate zip code if provided
+                if (zipcan) {
+                    const zipcanResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${zipcan}&countrycodes=US`);
+                    const zipcanData = await zipcanResponse.json();
+
+                    if (zipcanData.length === 0) {
+                        errorDiv.style.display = 'block';
+                        errorDiv.textContent = 'Candidate zip code not found. Please try another.';
+                        return;
+                    }
+
+                    const { lat: zipcanLat, lon: zipcanLon } = zipcanData[0];
+                    const zipcanLatitude = parseFloat(zipcanLat);
+                    const zipcanLongitude = parseFloat(zipcanLon);
+
+                    // Add marker for candidate zip with popup opened by default
+                    L.marker([zipcanLatitude, zipcanLongitude]).addTo(map)
+                        .bindPopup(`Zip: ${zipcan}`).openPopup();
+
+                    // Draw line between zip and zipcan
+                    polyline = L.polyline([
+                        [zipLatitude, zipLongitude],
+                        [zipcanLatitude, zipcanLongitude]
+                    ], {
+                        color: 'red',
+                        weight: 3
+                    }).addTo(map);
+
+                    // Calculate and display distance
+                    const distance = haversineDistance(zipLatitude, zipLongitude, zipcanLatitude, zipcanLongitude);
+                    distanceLabel.textContent = `Distance: ${distance.toFixed(2)} miles`;
+
+                    // Adjust map to fit both markers
+                    const bounds = L.latLngBounds([
+                        [zipLatitude, zipLongitude],
+                        [zipcanLatitude, zipcanLongitude]
+                    ]);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
 
             } catch (error) {
                 errorDiv.style.display = 'block';
