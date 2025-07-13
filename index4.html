@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Zip Code Radius Map (OpenStreetMap)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
+
+  <style>
+    /* full‐height flex layout */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #container {
+      width: 90%;
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* header with image and labels */
+    #header {
+      text-align: center;
+      padding: 10px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+      font-family: Arial, sans-serif;
+    }
+    #header img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    #header .label {
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    /* map fills remaining space */
+    #map {
+      flex: 1;
+    }
+
+    /* print‐friendly sizing */
+    @media print {
+      #container {
+        width: 100%;
+        max-width: 750px;
+      }
+      #map {
+        /* ensure the map fits on one page */
+        height: 500px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <div id="header">
+      <img src="header.jpg" alt="Header Image">
+      <div class="label">
+        Requisition: <span id="reqLabel">loading…</span>
+      </div>
+      <div class="label">
+        Zip Code: <span id="zipLabel">loading…</span>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const params = new URLSearchParams(window.location.search);
+
+      // show Requisition
+      const requisition = (params.get('Req') || '').trim();
+      document.getElementById('reqLabel').textContent = requisition || 'none';
+
+      // show Zip Code
+      const zip = (params.get('zip') || '').trim();
+      document.getElementById('zipLabel').textContent = zip || 'none';
+
+      if (!zip) {
+        alert('Please specify a zip code via ?zip=XXXXX');
+        return;
+      }
+
+      // geocode via Nominatim
+      const url = [
+        'https://nominatim.openstreetmap.org/search',
+        '?format=json&limit=1&countrycodes=us&postalcode=',
+        encodeURIComponent(zip)
+      ].join('');
+
+      fetch(url, { headers: { 'User-Agent': 'local-map-demo/1.0' } })
+        .then(res => res.json())
+        .then(results => {
+          if (!results[0]) throw new Error('No location found for ' + zip);
+
+          const lat = parseFloat(results[0].lat);
+          const lon = parseFloat(results[0].lon);
+
+          // initialize map
+          const map = L.map('map').setView([lat, lon], 8);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(map);
+
+          // draw 60-mile circle (60 mi × 1609.34 m/mi)
+          const radius = 60 * 1609.34;
+          const circle = L.circle([lat, lon], {
+            color: '#d00',
+            weight: 2,
+            fillOpacity: 0.1,
+            radius: radius
+          }).addTo(map);
+
+          map.fitBounds(circle.getBounds());
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Geocoding error: ' + err.message);
+        });
+    });
+  </script>
+</body>
+</html>
