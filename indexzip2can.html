@@ -24,7 +24,7 @@
             max-width: 800px;
             margin-top: 20px;
         }
-        #zipLabel, #reqLabel, #zipcanLabel, #distanceLabel {
+        #zipLabel, #reqLabel {
             font-size: 18px;
             font-weight: bold;
             margin: 10px 0;
@@ -41,8 +41,6 @@
     <h1>Zip Code Map with 60-Mile Radius</h1>
     <div id="zipLabel"></div>
     <div id="reqLabel"></div>
-    <div id="zipcanLabel"></div>
-    <div id="distanceLabel"></div>
     <div id="error"></div>
     <div id="map"></div>
 
@@ -50,7 +48,6 @@
     <script>
         let map;
         let circle;
-        let polyline;
 
         // Initialize the map
         function initMap(lat = 39.8283, lng = -98.5795) {
@@ -60,35 +57,25 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         }
 
-        // Haversine formula to calculate distance between two points in miles
-        function haversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 3958.8; // Earth's radius in miles
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
         // Function to get query string parameters
         function getQueryParams() {
             const params = new URLSearchParams(window.location.search);
             return {
                 zip: params.get('zip'),
-                req: params.get('req'),
-                zipcan: params.get('zipcan')
+                req: params.get('req')
             };
         }
 
-        // Function to update map based on zip codes
+        // Function to add a delay (returns a Promise)
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Function to update map based on zip code
         async function updateMap() {
-            const { zip, req, zipcan } = getQueryParams();
+            const { zip, req } = getQueryParams();
             const zipLabel = document.getElementById('zipLabel');
             const reqLabel = document.getElementById('reqLabel');
-            const zipcanLabel = document.getElementById('zipcanLabel');
-            const distanceLabel = document.getElementById('distanceLabel');
             const errorDiv = document.getElementById('error');
 
             // Display req parameter if present
@@ -97,4 +84,61 @@
             // Validate zip code
             if (!zip || !/^\d{5}$/.test(zip)) {
                 errorDiv.style.display = 'block';
-                errorDiv.textContent = 'Please provide a valid 5-digit zip code in the URL (e.g.,
+                errorDiv.textContent = 'Please provide a valid 5-digit zip code in the URL (e.g., ?zip=90210).';
+                return;
+            }
+
+            errorDiv.style.display = 'none';
+            zipLabel.textContent = `Zip Code: ${zip}`;
+
+            try {
+                // Add 3-second delay before API call
+                await delay(3000);
+
+                // Use Nominatim for geocoding (OpenStreetMap)
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${zip}&countrycodes=US`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = 'Zip code not found. Please try another.';
+                    return;
+                }
+
+                const { lat, lon } = data[0];
+                const latitude = parseFloat(lat);
+                const longitude = parseFloat(lon);
+
+                // Update map view
+                map.setView([latitude, longitude], 8);
+
+                // Remove existing circle if it exists
+                if (circle) {
+                    map.removeLayer(circle);
+                }
+
+                // Add 60-mile radius circle (1 mile ≈ 1609.34 meters)
+                circle = L.circle([latitude, longitude], {
+                    color: 'blue',
+                    fillColor: '#30f',
+                    fillOpacity: 0.2,
+                    radius: 60 * 1609.34 // 60 miles in meters
+                }).addTo(map);
+
+                // Add marker at the center
+                L.marker([latitude, longitude]).addTo(map)
+                    .bindPopup(`Zip: ${zip}`).openPopup();
+
+            } catch (error) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = 'Error fetching location data. Please try again.';
+                console.error(error);
+            }
+        }
+
+        // Initialize map and load map based on query parameters
+        initMap();
+        updateMap();
+    </script>
+</body>
+</html>
