@@ -82,6 +82,11 @@
             };
         }
 
+        // Function to delay execution
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
         // Function to update map based on zip codes
         async function updateMap() {
             const { zip, req, zipcan } = getQueryParams();
@@ -111,8 +116,7 @@
             errorDiv.style.display = 'none';
             zipLabel.textContent = `Zip Code: ${zip}`;
             zipcanLabel.textContent = zipcan ? `Candidate Zip Code: ${zipcan}` : '';
-
-(distanceLabel.textContent = '';
+            distanceLabel.textContent = '';
 
             try {
                 // Fetch coordinates for zip
@@ -154,6 +158,9 @@
 
                 // Handle candidate zip code if provided
                 if (zipcan) {
+                    // Add 3-second delay to avoid Nominatim rate limit
+                    await delay(3000);
+
                     const zipcanResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${zipcan}&countrycodes=US`);
                     const zipcanData = await zipcanResponse.json();
 
