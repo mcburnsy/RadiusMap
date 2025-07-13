@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zip Code Map</title>
+    <title>Matrix Medical Zip Code Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
@@ -12,6 +12,11 @@
             flex-direction: column;
             align-items: center;
             margin: 20px;
+        }
+        #headerImage {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
         }
         #map {
             height: 500px;
@@ -32,7 +37,8 @@
     </style>
 </head>
 <body>
-    <h1>Zip Code Map with 60-Mile Radius</h1>
+    <img id="headerImage" src="header.jpg" alt="Header Image">
+    <h1>60-Mile Radius</h1>
     <div id="zipLabel"></div>
     <div id="reqLabel"></div>
     <div id="error"></div>
@@ -68,7 +74,7 @@
             const errorDiv = document.getElementById('error');
 
             // Display req parameter if present
-            reqLabel.textContent = req ? `Request: ${req}` : '';
+            reqLabel.textContent = req ? `Requistion: ${req}` : '';
 
             // Validate zip code
             if (!zip || !/^\d{5}$/.test(zip)) {
