@@ -105,7 +105,7 @@
                 const longitude = parseFloat(lon);
 
                 // Update map view
-                map.setView([latitude, longitude], 8);
+                map.setView([latitude, longitude], 7);
 
                 // Remove existing circle if it exists
                 if (circle) {
@@ -117,7 +117,7 @@
                     color: 'blue',
                     fillColor: '#30f',
                     fillOpacity: 0.2,
-                    radius: distance * 1609.34 // 60 miles in meters
+                    radius: distance * 1609.34 // miles in meters
                 }).addTo(map);
 
                 // Add marker at the center
@@ -137,6 +137,7 @@
     </script>
 </body>
 </html>
+
 
 
 
