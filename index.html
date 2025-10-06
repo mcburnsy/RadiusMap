@@ -19,7 +19,7 @@
             margin-bottom: 20px;
         }
         #map {
-            height: 600px;
+            height: 625px;
             width: 100%;
             max-width: 800px;
             margin-top: 20px;
@@ -52,7 +52,7 @@
         function initMap(lat = 39.8283, lng = -98.5795) {
             map = L.map('map', {
                 attributionControl: false // Hide attribution
-            }).setView([lat, lng], 4);
+            }).setView([lat, lng], 3);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         }
 
@@ -72,6 +72,9 @@
             const zipLabel = document.getElementById('zipLabel');
             const reqLabel = document.getElementById('reqLabel');
             const errorDiv = document.getElementById('error');
+
+            const titleElement = document.querySelector('head title');
+            titleElement.textContent = 'Matrix Medical Zip Code Map' + req;
 
             // Display req parameter if present
             reqLabel.textContent = req ? `Requistion: ${req}` : '';
@@ -134,6 +137,7 @@
     </script>
 </body>
 </html>
+
 
 
 
